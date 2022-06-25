@@ -61,11 +61,12 @@ public class Identity3 {
     // Called by NucleiMgr processNuclei method
     @SuppressWarnings("unused")
 	public void identityAssignment() {
-    	println("Starting identity assingment in Identity3");
+    	println("Starting identity assignment in Identity3");
     	if (iNamingMethod == MANUAL) {
     		println("identityAssignment, skip naming due to MANUAL naming method");
     		return;
     	}
+        // NonManual Naming
         //iStartingIndex = iNucleiMgr.getConfig().iStartingIndex;
         clearAllNames();
         //System.out.println("identityAssignment iStartingIndex: " + iStartingIndex);
@@ -73,7 +74,7 @@ public class Identity3 {
        //this.measureCSV = iNucleiMgr.getMeasureCSV();
        // check for presence of uncompressed embryo --> AuxInfo_v2
         if (MeasureCSV.isAuxInfoV2()) {
-        	canTransform = new CanonicalTransform(measureCSV);
+        	canTransform = new CanonicalTransform(measureCSV); // get canonical transform from AuxInfo.csv
         }
         
 
@@ -85,14 +86,14 @@ public class Identity3 {
         int lin_ct = lineage_ct_p[0];
         iAxis = tryForAxis(); // sets iParameters.axis to 1 if if finds one
         // if no axis was specified then the initialID code will be run
+        // either axis is specified or determined by four-cell in initialID code
         // you could still use NEWCANONICAL here if iStartingIndex is greater than one
         // but this should be phased out
         if (iStartingIndex >= 1) {
 
-
-
+            // initID for four cells based on canTransform
             InitialID initID = new InitialID(iNucleiMgr, iParameters, iMeasureCSV, canTransform);
-            int mm = initID.initialID(start, lineage_ct_p);
+            int mm = initID.initialID(start, lineage_ct_p); // mm==0 --> four-cell naming failed; mm==1 --> four-cell naming succeeds
         	if (mm > 0) {
         		System.out.println("detected backtrace failure, lineage from start");
         		start[0] = 0; //start from scratch on failure of initialID
@@ -102,7 +103,7 @@ public class Identity3 {
             	iParameters.ap = iParameters.apInit;
             	iParameters.dv = iParameters.dvInit;
             	iParameters.lr = iParameters.lrInit;
-            	iAxis = getOrientation();
+            	iAxis = getOrientation(); // return 'ADL' format orientation
 
             	//System.out.println("initialID returned: " + mm);
             	lin_ct = lineage_ct_p[0];
@@ -114,7 +115,8 @@ public class Identity3 {
             	}
             }
         }
-        println("identityAssignment, reached code end, " + iStartingIndex + CS + start[0]);
+        // seems below is dealing with some remaining cases of naming, need to understand what situation they are dealing with
+        println("identityAssignment, reached code end, " + iStartingIndex + CS + start[0]); // CS = ", "
         // we are going to assign Nuc names from here on by a simple method
         for (int i = start[0]; i < iEndingIndex; i++) {
             Vector<Nucleus> nuclei = nuclei_record.elementAt(i);
@@ -124,10 +126,10 @@ public class Identity3 {
             Nucleus nucleij = null;
             for (int j = 0; j < nuc_ct; j++) {
                 nucleij = nuclei.elementAt(j);
-                if (nucleij.status == Nucleus.NILLI) continue;
+                if (nucleij.status == Nucleus.NILLI) continue; // i guess this means nucleij does not exist anymore
                 if (nuclei_prev != null && nucleij.predecessor != Nucleus.NILLI) {
                     Nucleus pred = nuclei_prev.elementAt(nucleij.predecessor - 1);
-                    if (pred.successor2 == Nucleus.NILLI) {
+                    if (pred.successor2 == Nucleus.NILLI) { // no division in this case as pred.successor2 is null
                      	nucleij.identity = pred.identity;
                        	continue;
                     } else {
@@ -151,7 +153,7 @@ public class Identity3 {
                 		nucleij.identity = nucleij.assignedID;
                 	else {
 	                	int z = Math.round(nucleij.z);
-	                	nucleij.identity = NUC + EUtils.makePaddedInt(i + 1) + "_" + z + "_" + nucleij.x + "_" + nucleij.y;
+	                	nucleij.identity = NUC + EUtils.makePaddedInt(i + 1) + "_" + z + "_" + nucleij.x + "_" + nucleij.y; // String NUC = "Nuc"
 	                	//println("identityAssignment, adding nuc, " + nucleij);
                 	}
                 }
@@ -178,6 +180,7 @@ public class Identity3 {
     // Clears all non-forced names
     @SuppressWarnings("unused")
 	private void clearNames(Vector<Nucleus> nuclei) {
+        // this seems clear names for the input nuclei at its all existing frames
         //println("cleaarNames: " + nuclei.size());
         Nucleus n;
         for (int i=0; i < nuclei.size(); i++) {
@@ -199,7 +202,7 @@ public class Identity3 {
 
         // legacy vs. revised configuration
         if (iNucleiMgr.isNucConfigNull()) {
-            zPixRes = iNucleiMgr.getZPixRes();
+            zPixRes = iNucleiMgr.getZPixRes(); // z pixel resolution 
             iEndingIndex = iNucleiMgr.getEndingIndex();;
         } else {
             zPixRes = iNucleiMgr.getNucConfig().getZPixRes();
@@ -213,8 +216,8 @@ public class Identity3 {
         	iDivisionCaller = new DivisionCaller(iMeasureCSV, iAxis, zPixRes);
         }
 
-        int k = iNucleiMgr.getNucleiRecord().size();
-        int m = Math.min(k, iEndingIndex);
+        int k = iNucleiMgr.getNucleiRecord().size(); // I guess this size is the number of nuclei files and this may be smaller than #{image frames}=iEndingIndex
+        int m = Math.min(k, iEndingIndex); // last frame
         newLine();
         System.out.println("useCanonicalRules starting at: " + start[0] + CS + iEndingIndex);
         int nuc_ct = 0;
@@ -225,7 +228,7 @@ public class Identity3 {
         /*
          * Iterate over all time points 
          */
-        for (i = start[0]; i <= m; i++) {
+        for (i = start[0]; i <= m; i++) { // from first frame to last frame
         	//System.out.println("\n----------------------------\n"+
         						//"usecanonicalrules "+i);
             if (breakout > 0) {
@@ -236,7 +239,7 @@ public class Identity3 {
             
             // access nuclei at given time point (0 indexed --> subtract 1)
             nuclei = nuclei_record.elementAt(i - 1);
-            nuc_ct = nuclei.size();
+            nuc_ct = nuclei.size(); // #{nuclei at frame i-1}
             Nucleus parent = null;
             Vector<Nucleus> nextNuclei;
             if (i < m) {
@@ -261,7 +264,7 @@ public class Identity3 {
                  * 
                  * REVISED July 14, 2016 --> @author Braden Katzman
                  */
-                if (pname == null || pname.length() == 0) {
+                if (pname == null || pname.length() == 0) { // set parent name if parent does not have name
                     //pname = NUC + iNucCount++;
                 	int z = Math.round(parent.z);
                 	
@@ -288,7 +291,7 @@ public class Identity3 {
                             if (n.assignedID.length() <= 0) {
                                 //println("useCanonicalRules, XXXXXX, " + i + CS + j + CS + parent.identity + CS + parent.status + CS + n.identity);
                                 //println("useCanonicalRules, XXXXXX, "+parent.identity);
-                                n.identity = pname;
+                                n.identity = pname; // no division, so the nucleus get same name as pname (its ascending name)
                             }
                         }
                         continue;
@@ -303,7 +306,7 @@ public class Identity3 {
                      * Assign names via DivisionCaller
                      */
                     if (parent != null && dau1 != null && dau2 != null) {
-                        iDivisionCaller.assignNames(parent, dau1, dau2);
+                        iDivisionCaller.assignNames(parent, dau1, dau2); // assign name based on parent, dau1 and dau2
                         usePreassignedID(dau1, dau2);
                     }
                 }
@@ -412,7 +415,7 @@ public class Identity3 {
                     break;
                 }
             case 'M':
-                if (n == 2) return("E");
+                if (n == 2) return("E"); // if 'MS' then 'E'
                 else {
                     sis = replaceLastChar(s);
                     break;
@@ -470,7 +473,7 @@ public class Identity3 {
 
     public static final String [] NAMING_METHOD = {
         "NONE"
-        ,"STANDARD"
+        ,"STANDARD" // not sure if this is used, and how this is different from "NEWCANONICAL"
         ,"MANUAL"
         ,"NEWCANONICAL"
     };
